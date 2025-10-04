@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Black Hole + Rocket — DEBUG BUILD</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #000;
+      color: #e8eef6;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      touch-action: none;
+    }
+
+    #wrap {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(900px 600px at 50% 50%, #07090f, #000);
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* HUD + Version badge */
+    .hud {
+      position: absolute;
+      left: 12px;
+      top: 36px;
+      font-size: 12px;
+      opacity: .95;
+      background: rgba(0, 0, 0, .35);
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      z-index: 6;
+    }
+
+    .badge {
+      position: absolute;
+      left: 12px;
+      top: 8px;
+      z-index: 7;
+      font-size: 11px;
+      background: #1b2333;
+      color: #cfe9ff;
+      border: 1px solid rgba(121, 198, 255, .4);
+      padding: 4px 8px;
+      border-radius: 8px;
+      letter-spacing: .3px;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    /* Menu bar */
+    .menu-bar {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      color: #e8eef6;
+      display: flex;
+      gap: 8px;
+    }
+
+    .menu-btn,
+    .info-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: rgba(10, 10, 20, .7);
+      border: 1px solid rgba(255, 255, 255, .12);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .menu-btn b {
+      font-size: 13px;
+      letter-spacing: .2px;
+    }
+
+    .menu-dropdown {
+      margin-top: 8px;
+      width: min(380px, calc(100vw - 24px));
+      background: rgba(10, 10, 20, .85);
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: none;
+    }
+
+    .menu-row {
+      display: grid;
+      grid-template-columns: 1fr 80px;
+      gap: 10px;
+      align-items: center;
+      margin: 8px 0;
+    }
+
+    .menu-row label {
+      font-size: 12px;
+      opacity: .9;
+    }
+
+    .menu-row input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #79c6ff, #aabfff);
+      outline: none;
+    }
+
+    .menu-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #79c6ff;
+      box-shadow: 0 0 0 4px rgba(121, 198, 255, .15);
+      cursor: pointer;
+    }
+
+    .kv {
+      font-size: 12px;
+      text-align: right;
+      opacity: .9;
+    }
+
+    .menu-toggles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .toggle {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(255, 255, 255, .08)
+    }
+
+    /* DEBUG panel */
+    .debug {
+      position: absolute;
+      right: 12px;
+      top: 54px;
+      z-index: 11;
+      display: none;
+      background: #0c1320;
+      color: #e6f0ff;
+      border: 1px solid rgba(121, 198, 255, .4);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    /* Touch UI */
+    .touch-ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9;
+    }
+
+    .joy {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 2px solid rgba(121, 198, 255, 0.6);
+      pointer-events: auto;
+    }
+
+    .joy .knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 68px;
+      height: 68px;
+      margin-left: -34px;
+      margin-top: -34px;
+      border-radius: 50%;
+      background: rgba(121, 198, 255, 0.35);
+      border: 1px solid rgba(121, 198, 255, 0.8);
+    }
+
+    .throttle {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      width: 180px;
+      pointer-events: auto;
+    }
+
+    .thrTrack {
+      position: relative;
+      width: 56px;
+      height: 200px;
+      margin-left: auto;
+      margin-right: auto;
+      background: rgba(255, 255, 255, 0.06);
+      border: 2px solid rgba(255, 120, 50, 0.6);
+      border-radius: 16px;
+    }
+
+    .thrFill {
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      bottom: 4px;
+      height: 0%;
+      background: linear-gradient(180deg, rgba(255, 210, 90, 0.9), rgba(255, 120, 50, 0.9));
+      border-radius: 12px;
+    }
+
+    .thrKnob {
+      position: absolute;
+      left: 50%;
+      width: 64px;
+      height: 28px;
+      margin-left: -32px;
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 10px;
+      transform: translateY(-14px);
+    }
+
+    .touch-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #e8eef6;
+      font-weight: 600;
+      letter-spacing: .4px;
+      pointer-events: auto;
+      user-select: none;
+    }
+
+    .btn.warn {
+      background: rgba(255, 120, 50, 0.2);
+      border-color: rgba(255, 120, 50, 0.5);
+    }
+
+    .btn.alt {
+      background: rgba(120, 200, 255, 0.15);
+      border-color: rgba(120, 200, 255, 0.5);
+    }
+
+    /* Toast */
+    .toast {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 12px;
+      z-index: 12;
+      background: #10253a;
+      color: #cfe9ff;
+      border: 1px solid rgba(121, 198, 255, .5);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+
+    <div class="badge" id="verBadge">DEBUG v1 — <!--STAMP--></div>
+
+    <div class="hud">
+      <div><b>Kontrol Keyboard</b>: <span class="mono">A/D</span> rotasi • <span class="mono">W/S</span> maju/mundur •
+        <span class="mono">SHIFT</span> boost • <span class="mono">SPACE</span> respawn
+      </div>
+      <div id="stats" class="mono" style="opacity:.9;margin-top:6px;"></div>
+    </div>
+
+    <nav class="menu-bar" aria-label="Menu kontrol">
+      <div class="info-btn" id="infoBtn">ℹ︎ Info</div>
+      <div class="menu-btn" id="menuBtn" title="Pengaturan"><span>☰</span><b>Pengaturan</b></div>
+      <div class="menu-dropdown" id="menuDrop">
+        <h1 style="font-size:14px;margin:4px 0 6px 2px;font-weight:600">Black Hole + Rocket</h1>
+        <div class="menu-row">
+          <label for="mass">Massa (≈ radius horizon)</label>
+          <input id="mass" type="range" min="40" max="320" step="1" value="140" />
+          <div class="kv"><span id="massVal">140</span> px</div>
+        </div>
+        <div class="menu-row">
+          <label for="spin">Spin (frame-dragging)</label>
+          <input id="spin" type="range" min="0" max="1" step="0.01" value="0.6" />
+          <div class="kv"><span id="spinVal">0.60</span></div>
+        </div>
+        <div class="menu-row">
+          <label for="brightness">Kecerahan disk</label>
+          <input id="brightness" type="range" min="0" max="1" step="0.01" value="0.75" />
+          <div class="kv"><span id="brightVal">0.75</span></div>
+        </div>
+        <div class="menu-row">
+          <label for="stardensity">Kerapatan bintang</label>
+          <input id="stardensity" type="range" min="50" max="2000" step="10" value="900" />
+          <div class="kv"><span id="starVal">900</span></div>
+        </div>
+        <div class="menu-toggles">
+          <label class="toggle"><input id="nebula" type="checkbox" checked> Nebula</label>
+          <label class="toggle"><input id="helper" type="checkbox" checked> Orbit helper</label>
+        </div>
+      </div>
+    </nav>
+
+    <!-- DEBUG panel -->
+    <div class="debug" id="debugPanel"></div>
+
+    <!-- TOUCH ANALOG -->
+    <div class="touch-ui" id="touchUI">
+      <div class="joy" id="joyL">
+        <div class="knob" id="joyKnob"></div>
+      </div>
+      <div class="throttle">
+        <div class="thrTrack" id="thrTrack">
+          <div class="thrFill" id="thrFill"></div>
+          <div class="thrKnob" id="thrKnob"></div>
+        </div>
+        <div class="touch-row">
+          <div class="btn warn" id="btnBoost">BOOST</div>
+          <div class="btn" id="btnRev">REV</div>
+          <div class="btn alt" id="btnResp">RESP</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast">Touch UI ENABLED</div>
+  </div>
+
+  <script>
+    (function () {
+      // ===== Version stamp (biar kelihatan beda) =====
+      var badge = document.getElementById('verBadge');
+      var stamp = new Date().toLocaleString();
+      badge.textContent = 'DEBUG v1 — ' + stamp;
+      console.log('DEBUG BUILD LOADED @', stamp);
+
+      // ===== Canvas setup =====
+      var canvas = document.getElementById('c');
+      var ctx = canvas.getContext('2d');
+      var W = 0, H = 0, DPR = Math.min(2, window.devicePixelRatio || 1);
+
+      function resize() {
+        W = canvas.width = Math.floor(window.innerWidth * DPR);
+        H = canvas.height = Math.floor(window.innerHeight * DPR);
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        buildStars(); buildNebula();
+        if (state === 'idle') respawn();
+        updateDebug();
+      }
+      window.addEventListener('resize', resize);
+
+      // ===== UI refs =====
+      var mass = document.getElementById('mass');
+      var spin = document.getElementById('spin');
+      var brightness = document.getElementById('brightness');
+      var stardensity = document.getElementById('stardensity');
+      var massVal = document.getElementById('massVal');
+      var spinVal = document.getElementById('spinVal');
+      var brightVal = document.getElementById('brightVal');
+      var starVal = document.getElementById('starVal');
+      var nebulaToggle = document.getElementById('nebula');
+      var helperToggle = document.getElementById('helper');
+      var statsEl = document.getElementById('stats');
+      function syncLabels() {
+        massVal.textContent = mass.value;
+        spinVal.textContent = (+spin.value).toFixed(2);
+        brightVal.textContent = (+brightness.value).toFixed(2);
+        starVal.textContent = stardensity.value;
+        buildStars();
+      }
+      mass.addEventListener('input', syncLabels);
+      spin.addEventListener('input', syncLabels);
+      brightness.addEventListener('input', syncLabels);
+      stardensity.addEventListener('input', syncLabels);
+
+      // Menu
+      var menuBtn = document.getElementById('menuBtn');
+      var menuDrop = document.getElementById('menuDrop');
+      var menuOpen = false;
+      function closeMenu() { if (menuDrop) { menuDrop.style.display = 'none'; menuOpen = false; } }
+      function openMenu() { if (menuDrop) { menuDrop.style.display = 'block'; menuOpen = true; } }
+      if (menuBtn) { menuBtn.addEventListener('click', function () { if (menuOpen) closeMenu(); else openMenu(); }); }
+      [mass, spin, brightness, stardensity, nebulaToggle, helperToggle].forEach(function (el) {
+        if (el) { el.addEventListener('input', function () { if (window.innerWidth < 768) closeMenu(); }); }
+      });
+
+      // Info / debug panel
+      var infoBtn = document.getElementById('infoBtn');
+      var debugPanel = document.getElementById('debugPanel');
+      var debugOpen = false;
+      function updateDebug() {
+        var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth < 1024;
+        var txt = [
+          'Build: ' + stamp,
+          'UserAgent: ' + navigator.userAgent,
+          'DPR: ' + DPR,
+          'Canvas: ' + W + '×' + H + ' (px@1x: ' + window.innerWidth + '×' + window.innerHeight + ')',
+          'Touch detected: ' + isTouch,
+          'Time: ' + new Date().toLocaleTimeString()
+        ].join('\\n');
+        debugPanel.textContent = txt;
+      }
+      infoBtn.addEventListener('click', function () {
+        debugOpen = !debugOpen;
+        debugPanel.style.display = debugOpen ? 'block' : 'none';
+        updateDebug();
+      });
+
+      // Stars / Nebula
+      var stars = [];
+      function buildStars() {
+        stars.length = 0; var n = +stardensity.value;
+        for (var i = 0; i < n; i++) stars.push({ x: Math.random() * W, y: Math.random() * H, r: (Math.random() * 1.2 + 0.15) * DPR, a: Math.random() * 0.6 + 0.4, tw: Math.random() * 6.28 });
+      }
+      function drawStars(t) {
+        ctx.save(); ctx.globalCompositeOperation = 'screen';
+        for (var i = 0; i < stars.length; i++) {
+          var s = stars[i];
+          var twinkle = 0.75 + 0.25 * Math.sin(t * 1.5 + s.tw);
+          ctx.beginPath(); var g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, 2.2 * s.r);
+          g.addColorStop(0, 'rgba(180,200,255,' + (0.95 * s.a * twinkle) + ')');
+          g.addColorStop(1, 'rgba(180,200,255,0)');
+          ctx.fillStyle = g; ctx.arc(s.x, s.y, 2.2 * s.r, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+      var puffs = [];
+      function buildNebula() { puffs.length = 0; for (var i = 0; i < 18; i++) puffs.push({ x: Math.random() * W, y: Math.random() * H, r: (200 + Math.random() * 500) * DPR, a: 0.03 + Math.random() * 0.06, s: (0.1 + Math.random() * 0.4) * (Math.random() < .5 ? -1 : 1) }); }
+      function drawNebula(t) { if (!nebulaToggle.checked) return; ctx.save(); ctx.globalCompositeOperation = 'screen'; for (var i = 0; i < puffs.length; i++) { var p = puffs[i]; var rr = p.r * (1 + 0.02 * Math.sin(t * 0.3 + p.x * 0.0005)); var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr); g.addColorStop(0, 'hsla(' + (200 + 60 * Math.sin(p.x * .0005 + p.y * .0003)) + ',85%,65%,' + p.a + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, Math.PI * 2); ctx.fill(); p.x += p.s; if (p.x < -rr) p.x = W + rr; if (p.x > W + rr) p.x = -rr; } ctx.restore(); }
+
+      // Black hole
+      function drawBlackHole(cx, cy, t) {
+        var rH = (+mass.value) * DPR;
+        var spinRate = (0.2 + (+spin.value) * 1.8);
+        var glow = (+brightness.value);
+
+        var vg = ctx.createRadialGradient(cx, cy, rH * 0.2, cx, cy, Math.max(W, H) * 0.7);
+        vg.addColorStop(0, 'rgba(0,0,0,1)'); vg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+        var layers = 32;
+        for (var i = 0; i < layers; i++) {
+          var p = i / (layers - 1);
+          var rad = rH * 1.15 + p * rH * 2.6;
+          var w = Math.max(5 * DPR, rH * 0.055 * (1.6 - p));
+          ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * spinRate * (1.2 - p * 0.9));
+          for (var half = 0; half < 2; half++) {
+            var hue = 25; var light = 52 + 20 * (1 - p);
+            var alpha = (1.0 - p) * (0.35 + 0.65 * glow);
+            var factor = (half === 0 ? 1.6 : 1.0);
+            ctx.beginPath();
+            ctx.strokeStyle = 'hsla(' + hue + ',100%,' + light + '%,' + (alpha * factor) + ')';
+            ctx.lineWidth = w; ctx.lineCap = 'round';
+            var span = Math.PI * 0.78;
+            var sign = half === 0 ? 1 : -1;
+            ctx.arc(0, 0, rad, -span * sign, 0 * sign);
+            ctx.globalCompositeOperation = 'lighter'; ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        var ps = rH * 1.5;
+        var g2 = ctx.createRadialGradient(cx, cy, rH * 0.9, cx, cy, ps);
+        g2.addColorStop(0, 'rgba(255,120,50,' + (0.16 + 0.26 * glow) + ')');
+        g2.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalCompositeOperation = 'screen';
+        ctx.beginPath(); ctx.fillStyle = g2; ctx.arc(cx, cy, ps, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+
+        ctx.beginPath(); ctx.fillStyle = '#000'; ctx.arc(cx, cy, rH, 0, Math.PI * 2); ctx.fill();
+
+        var rim = ctx.createRadialGradient(cx, cy, rH * 0.95, cx, cy, rH * 1.35);
+        rim.addColorStop(0, 'rgba(255,255,255,0)');
+        rim.addColorStop(1, 'rgba(255,120,50,' + (0.2 + 0.3 * glow) + ')');
+        ctx.globalCompositeOperation = 'screen';
+        ctx.beginPath(); ctx.fillStyle = rim; ctx.arc(cx, cy, rH * 1.35, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+
+        var rs = rH;
+        var isco = (3 - 1.2 * (+spin.value)) * rs;
+        ctx.save(); ctx.strokeStyle = 'rgba(255,150,90,0.25)'; ctx.setLineDash([6, 8]); ctx.lineWidth = 1 * DPR;
+        ctx.beginPath(); ctx.arc(cx, cy, isco, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+
+        return { rH: rH, rs: rs, isco: isco };
+      }
+
+      // Physics
+      function accelPW(cx, cy, x, y, GM, rs, spinK) {
+        var dx = cx - x, dy = cy - y; var r = Math.hypot(dx, dy);
+        r = Math.max(rs * 1.02, r);
+        var invr = 1 / r; var rmr = r - rs; var mag = GM / (rmr * rmr);
+        var ax = (dx * invr) * mag, ay = (dy * invr) * mag;
+        var ppx = -dy * invr, ppy = dx * invr; var a_t = spinK * GM * (rs / (r * r * r));
+        ax += ppx * a_t; ay += ppy * a_t;
+        return { ax: ax, ay: ay, r: r };
+      }
+      function rk4Integrate(state, dt, params) {
+        function f(s) {
+          var a = accelPW(params.cx, params.cy, s.x, s.y, params.GM, params.rs, params.spinK);
+          return { xdot: s.vx, ydot: s.vy, vxdot: a.ax + params.tx, vydot: a.ay + params.ty };
+        }
+        var k1 = f(state);
+        var k2 = f({ x: state.x + 0.5 * dt * k1.xdot, y: state.y + 0.5 * dt * k1.ydot, vx: state.vx + 0.5 * dt * k1.vxdot, vy: state.vy + 0.5 * dt * k1.vydot });
+        var k3 = f({ x: state.x + 0.5 * dt * k2.xdot, y: state.y + 0.5 * dt * k2.ydot, vx: state.vx + 0.5 * dt * k2.vxdot, vy: state.vy + 0.5 * dt * k2.vydot });
+        var k4 = f({ x: state.x + dt * k3.xdot, y: state.y + dt * k3.ydot, vx: state.vx + dt * k3.vxdot, vy: state.vy + dt * k3.vydot });
+        var xn = state.x + (dt / 6) * (k1.xdot + 2 * k2.xdot + 2 * k3.xdot + k4.xdot);
+        var yn = state.y + (dt / 6) * (k1.ydot + 2 * k2.ydot + 2 * k3.ydot + k4.ydot);
+        var vxn = state.vx + (dt / 6) * (k1.vxdot + 2 * k2.vxdot + 2 * k3.vxdot + k4.vxdot);
+        var vyn = state.vy + (dt / 6) * (k1.vydot + 2 * k2.vydot + 2 * k3.vydot + k4.vydot);
+        return { x: xn, y: yn, vx: vxn, vy: vyn };
+      }
+
+      // Player
+      var player = { x: 0, y: 0, vx: 0, vy: 0, r: 10, angle: Math.PI, angVel: 0, thrusting: false, reversing: false, boosting: false };
+      function respawn() { state = 'idle'; tEnter = 0; fade = 0; var px = W * 0.78, py = H * 0.32; player.x = px; player.y = py; player.vx = 0; player.vy = 0; player.angle = Math.PI; player.angVel = 0; player.thrusting = false; player.reversing = false; player.boosting = false; }
+
+      var keys = new Set();
+      window.addEventListener('keydown', function (e) {
+        var k = e.key.toLowerCase();
+        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'shift'].indexOf(k) >= 0) e.preventDefault();
+        keys.add(k);
+        if (state === 'inside' && k === ' ') respawn();
+      });
+      window.addEventListener('keyup', function (e) { keys.delete(e.key.toLowerCase()); });
+
+      function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+      function len(x, y) { return Math.hypot(x, y); }
+
+      // Touch UI
+      var touchUI = document.getElementById('touchUI');
+      var joy = document.getElementById('joyL'), joyKnob = document.getElementById('joyKnob');
+      var thrTrack = document.getElementById('thrTrack'), thrFill = document.getElementById('thrFill'), thrKnob = document.getElementById('thrKnob');
+      var btnBoost = document.getElementById('btnBoost'), btnRev = document.getElementById('btnRev'), btnResp = document.getElementById('btnResp');
+      var toast = document.getElementById('toast');
+
+      var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth < 1024;
+      touchUI.style.display = isTouch ? 'block' : 'none';
+      if (isTouch) { toast.style.display = 'block'; setTimeout(function () { toast.style.display = 'none'; }, 2000); }
+
+      // Joystick
+      var joyActive = false, joyId = null, joyCenter = { x: 0, y: 0 }, joyRad = 70, joyX = 0, joyY = 0;
+      function joySetFromEvent(clientX, clientY) {
+        var rect = joy.getBoundingClientRect();
+        joyCenter.x = rect.left + rect.width / 2;
+        joyCenter.y = rect.top + rect.height / 2;
+        var dx = clientX - joyCenter.x;
+        var dy = clientY - joyCenter.y;
+        var dist = Math.hypot(dx, dy);
+        var max = joyRad;
+        if (dist > max) { dx = dx / dist * max; dy = dy / dist * max; }
+        joyX = dx / max; joyY = dy / max;
+        joyKnob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      }
+      function joyReset() { joyActive = false; joyId = null; joyX = 0; joyY = 0; joyKnob.style.transform = 'translate(0px,0px)'; }
+      joy.addEventListener('pointerdown', function (e) { joyActive = true; joyId = e.pointerId; joy.setPointerCapture(e.pointerId); joySetFromEvent(e.clientX, e.clientY); e.preventDefault(); }, { passive: false });
+      joy.addEventListener('pointermove', function (e) { if (!joyActive || e.pointerId !== joyId) return; joySetFromEvent(e.clientX, e.clientY); e.preventDefault(); }, { passive: false });
+      function endJoy(e) { if (joyActive && (!e || e.pointerId === joyId)) { try { joy.releasePointerCapture(joyId); } catch (_) { } joyReset(); } }
+      joy.addEventListener('pointerup', endJoy); joy.addEventListener('pointercancel', endJoy); joy.addEventListener('lostpointercapture', joyReset);
+
+      // Throttle
+      var thrActive = false, thrId = null, thrRect = null, thrVal = 0;
+      function thrUpdateFrom(y) {
+        var top = thrRect.top + 8, bottom = thrRect.bottom - 8;
+        var h = bottom - top;
+        var v = clamp((bottom - y) / h, 0, 1);
+        thrVal = v;
+        thrFill.style.height = (v * 100) + '%';
+        var knobY = (1 - v) * h + 8;
+        thrKnob.style.top = knobY + 'px';
+      }
+      thrTrack.addEventListener('pointerdown', function (e) { thrActive = true; thrId = e.pointerId; thrTrack.setPointerCapture(e.pointerId); thrRect = thrTrack.getBoundingClientRect(); thrUpdateFrom(e.clientY); e.preventDefault(); }, { passive: false });
+      thrTrack.addEventListener('pointermove', function (e) { if (!thrActive || e.pointerId !== thrId) return; thrUpdateFrom(e.clientY); e.preventDefault(); }, { passive: false });
+      function endThr(e) { if (thrActive && (!e || e.pointerId === thrId)) { try { thrTrack.releasePointerCapture(thrId); } catch (_) { } thrActive = false; } }
+      thrTrack.addEventListener('pointerup', endThr); thrTrack.addEventListener('pointercancel', endThr); thrTrack.addEventListener('lostpointercapture', function () { thrActive = false; });
+
+      // Buttons
+      var touchBoost = false, touchRev = false;
+      function bindHold(btn, setter) {
+        btn.addEventListener('pointerdown', function (e) { btn.setPointerCapture(e.pointerId); setter(true); e.preventDefault(); }, { passive: false });
+        function end(e) { setter(false); try { btn.releasePointerCapture(e.pointerId); } catch (_) { } }
+        btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', end); btn.addEventListener('lostpointercapture', function () { setter(false); });
+      }
+      bindHold(btnBoost, function (v) { touchBoost = v; });
+      bindHold(btnRev, function (v) { touchRev = v; });
+      btnResp.addEventListener('click', function () { respawn(); });
+
+      // Main loop
+      var state = 'idle'; var tEnter = 0, fade = 0; var last = 0; resize(); syncLabels(); respawn();
+      function drawPredict(cx, cy, GM, rs, spinK, tx, ty) {
+        if (!(helperToggle && helperToggle.checked)) return;
+        var steps = 100, dtp = 1 / 60;
+        var s = { x: player.x, y: player.y, vx: player.vx, vy: player.vy };
+        ctx.save(); ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.moveTo(s.x, s.y);
+        for (var i = 0; i < steps; i++) {
+          var a = accelPW(cx, cy, s.x, s.y, GM, rs, spinK);
+          s.vx += (a.ax + tx) * dtp; s.vy += (a.ay + ty) * dtp; s.x += s.vx * dtp; s.y += s.vy * dtp;
+          ctx.lineTo(s.x, s.y);
+          if (Math.hypot(cx - s.x, cy - s.y) <= rs) break;
+        }
+        ctx.setLineDash([4 * DPR, 4 * DPR]); ctx.strokeStyle = 'rgba(255,200,160,0.55)'; ctx.lineWidth = 1 * DPR; ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+      }
+
+      function frame(ts) {
+        var dt = Math.min(0.033, (ts - last) / 1000 || 0.016); var t = ts / 1000; last = ts;
+        ctx.clearRect(0, 0, W, H);
+
+        var cx = W * 0.5, cy = H * 0.52;
+        drawNebula(t); drawStars(t);
+        var bh = drawBlackHole(cx, cy, t);
+
+        // Physics params
+        var GM = (+mass.value) * 260;
+        var spinK = (+spin.value) * 3.2;
+        var dx = cx - player.x, dy = cy - player.y; var r = Math.hypot(dx, dy);
+
+        // Controls (keyboard + touch)
+        var turnInput = 0;
+        if (keys.has('a') || keys.has('arrowleft')) turnInput -= 1;
+        if (keys.has('d') || keys.has('arrowright')) turnInput += 1;
+        turnInput += joyX; turnInput = clamp(turnInput, -1, 1);
+
+        var forwardInput = 0;
+        if (keys.has('w') || keys.has('arrowup')) forwardInput += 1;
+        if (keys.has('s') || keys.has('arrowdown')) forwardInput -= 1;
+        forwardInput += thrVal;
+        if (touchRev) forwardInput -= 1;
+
+        var boosting = (keys.has('shift') || touchBoost);
+
+        var turnSpeed = 2.8;
+        player.angVel = turnSpeed * turnInput; player.angle += player.angVel * dt;
+
+        var baseThrust = 140 * DPR;
+        var thrustFwd = clamp(forwardInput, -1, 1) * baseThrust * (boosting ? 2.0 : 1.0);
+        var tx = Math.cos(player.angle) * thrustFwd;
+        var ty = Math.sin(player.angle) * thrustFwd;
+        player.thrusting = thrustFwd > 5; player.reversing = thrustFwd < -5; player.boosting = boosting && player.thrusting;
+
+        drawPredict(cx, cy, GM, bh.rs, spinK, tx, ty);
+
+        // Integrate + border bounce
+        if (state === 'idle') {
+          var next = rk4Integrate({ x: player.x, y: player.y, vx: player.vx, vy: player.vy }, dt, { cx: cx, cy: cy, GM: GM, rs: bh.rs, spinK: spinK, tx: tx, ty: ty });
+          player.x = next.x; player.y = next.y; player.vx = next.vx; player.vy = next.vy;
+
+          var bounce = 0.6, pad = 2 * DPR;
+          if (player.x < 0) { player.x = pad; player.vx = Math.abs(player.vx) * bounce; }
+          if (player.x > W) { player.x = W - pad; player.vx = -Math.abs(player.vx) * bounce; }
+          if (player.y < 0) { player.y = pad; player.vy = Math.abs(player.vy) * bounce; }
+          if (player.y > H) { player.y = H - pad; player.vy = -Math.abs(player.vy) * bounce; }
+        }
+
+        // Draw rocket
+        var pr = 10 * DPR; var stretch = 1 + clamp((bh.rs * 1.2 / Math.max(r, bh.rs)) ** 2, 0, 4);
+        ctx.save();
+        ctx.translate(player.x, player.y); ctx.rotate(player.angle);
+        var L = pr * 2.5 * stretch, Rr = pr * 0.7;
+        ctx.beginPath(); ctx.moveTo(L * 0.55, 0);
+        ctx.quadraticCurveTo(L * 0.08, -Rr, -L * 0.4, -Rr * 0.7);
+        ctx.lineTo(-L * 0.4, Rr * 0.7);
+        ctx.quadraticCurveTo(L * 0.08, Rr, L * 0.55, 0);
+        ctx.closePath(); ctx.fillStyle = 'rgba(240,245,255,0.95)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(L * 0.15, 0, Rr * 0.35, 0, Math.PI * 2); ctx.fillStyle = 'rgba(40,60,100,0.9)'; ctx.fill();
+        ctx.fillStyle = 'rgba(200,60,60,0.9)';
+        ctx.beginPath(); ctx.moveTo(-L * 0.25, -Rr * 0.2); ctx.lineTo(-L * 0.55, -Rr * 0.9); ctx.lineTo(-L * 0.1, -Rr * 0.1); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-L * 0.25, Rr * 0.2); ctx.lineTo(-L * 0.55, Rr * 0.9); ctx.lineTo(-L * 0.1, Rr * 0.1); ctx.closePath(); ctx.fill();
+        var speed = Math.hypot(player.vx, player.vy);
+        if (player.thrusting || speed > 60) {
+          var flick = 0.8 + 0.4 * Math.sin(t * 40 + player.x * 0.02);
+          var flameLen = clamp(L * 0.55 + speed * 0.06 + (player.thrusting ? pr * 0.9 : 0), L * 0.55, L * 1.25 * (player.boosting ? 1.15 : 1));
+          var grad = ctx.createLinearGradient(-L * 0.45, 0, -flameLen, 0);
+          grad.addColorStop(0, 'rgba(255,210,90,0.95)');
+          grad.addColorStop(0.4, 'rgba(255,140,40,0.85)');
+          grad.addColorStop(1, 'rgba(80,180,255,0.0)');
+          ctx.beginPath(); ctx.moveTo(-L * 0.4, -Rr * 0.35); ctx.lineTo(-flameLen * flick, 0); ctx.lineTo(-L * 0.4, Rr * 0.35); ctx.closePath();
+          ctx.fillStyle = grad; ctx.globalCompositeOperation = 'lighter'; ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+        }
+        ctx.restore();
+
+        // HUD
+        statsEl.textContent = 'Build: ' + stamp + ' | DPR:' + DPR + ' | Touch:' + isTouch + ' | v:' + ((len(player.vx, player.vy) / DPR).toFixed(1)) + ' px/s';
+
+        // Horizon crossing
+        if (state === 'idle' && r <= bh.rs) { state = 'inside'; tEnter = t; fade = 0; }
+        if (state === 'inside') {
+          fade = clamp((t - tEnter) / 2.0, 0, 1);
+          ctx.fillStyle = 'rgba(0,0,0,' + fade + ')'; ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = 'rgba(255,200,160,' + Math.min(1, fade * 1.5) + ')';
+          ctx.font = (18 * DPR) + 'px system-ui, sans-serif';
+          var msg = 'Roket melewati event horizon. Tidak ada sinyal yang dapat keluar.';
+          var sub = 'Tap RESP untuk respawn.';
+          var tw = ctx.measureText(msg).width; var sw = ctx.measureText(sub).width;
+          ctx.fillText(msg, (W - tw) / 2, H * 0.45);
+          ctx.fillText(sub, (W - sw) / 2, H * 0.45 + 28 * DPR);
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      // Init
+      var state = 'idle'; var tEnter = 0, fade = 0;
+      resize(); syncLabels(); respawn();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+
+</html>
